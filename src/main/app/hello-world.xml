@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:mulerequester="http://www.mulesoft.org/schema/mule/mulerequester" xmlns:oauth2="http://www.mulesoft.org/schema/mule/oauth2" xmlns:amqp="http://www.mulesoft.org/schema/mule/amqp"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/amqp http://www.mulesoft.org/schema/mule/amqp/current/mule-amqp.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/oauth2 http://www.mulesoft.org/schema/mule/oauth2/current/mule-oauth2.xsd
+http://www.mulesoft.org/schema/mule/mulerequester http://www.mulesoft.org/schema/mule/mulerequester/current/mule-mulerequester.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+
+	<db:mysql-config name="MySQL_Configuration" host="mysql.shared.demos.mulesoft.com" port="3306" user="${db.username}" password="${db.password}" database="${db.db}" doc:name="MySQL Configuration"/>
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <file:connector name="File" doc:name="connector" autoDelete="false" streaming="true" validateConnections="true"/>
+
+    <flow name="hello-worldFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/" doc:name="HTTP"/>
+        
+        <db:select config-ref="MySQL_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[select * from records]]></db:parameterized-query>
+        </db:select>
+        <enricher target="#[flowVars.dwScript]" doc:name="Message Enricher">
+            <processor-chain doc:name="Processor Chain">
+                <mulerequester:request resource="file:///Users/dejimjuang/Workspace/examples/dynamic-dw-output/src/main/resources/script.dwl" doc:name="Mule Requester"/>
+                <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+            </processor-chain>
+        </enricher>
+        <set-payload value="#[dw(flowVars.dwScript,message.inboundProperties.'content-type')]" doc:name="Apply dw() Function"/>
+    </flow>
+
+</mule>
